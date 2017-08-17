@@ -49,6 +49,7 @@ struct glstuff_instance_data {
     HGLRC sdl_gl_context;
     HDC sdl_dc;
 #else
+    SDL_SysWMinfo wm_info;
     GLXContext sdl_gl_context;
 #endif
 };
@@ -128,6 +129,7 @@ init_gl_appsink_from_sdl_and_pipeline (SDL_Window *sdl_window, GstPipeline *pipe
 #else
   SDL_VERSION (&info.version);
   SDL_GetWindowWMInfo (sdl_window, &info);
+  data.wm_info = info;
   data.sdl_display = info.info.x11.display;
   data.sdl_win = info.info.x11.window;
   data.sdl_gl_context = glXGetCurrentContext ();
@@ -160,18 +162,18 @@ init_gl_appsink_from_sdl_and_pipeline (SDL_Window *sdl_window, GstPipeline *pipe
 #endif
 
 
-  g_object_set(pipeline, "glstuff-instance-data", &data, NULL);
+  g_object_set_data(G_OBJECT(pipeline), "glstuff-instance-data", &data);
   return;
 }
 
 void
 stop_pipeline_and_fix_context(GstPipeline *pipeline) {
-   struct glstuff_instance_data *data;
-   g_object_get(pipeline, "glstuff-instance-data", &data, NULL);
-
+   struct glstuff_instance_data *data = 
+        (struct glstuff_instance_data *) g_object_get_data(G_OBJECT(pipeline), "glstuff-instance-data");
+    
   /* before to deinitialize the gst-gl-opengl context,
    * no shared context (here the sdl one) must be current
-   */   
+   */
 #ifdef WIN32
   wglMakeCurrent (0, 0);
 #else
